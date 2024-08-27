@@ -9,7 +9,6 @@ import threading
 from queue import Queue
 import eventlet
 eventlet.monkey_patch()
-
 ###urls城市根据自己所处的地理位置修改
 urls = [
     "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgcG9ydD0iODg4OCI%3D",#广东8888
@@ -19,8 +18,6 @@ urls = [
     "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgY2l0eT0iU2hlbnpoZW4i"#湛江
      "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgY2l0eT0iR3Vhbmd6aG91Ig%3D%3D"#广州
 ]
-
-
 def modify_urls(url):
     modified_urls = []
     ip_start_index = url.find("//") + 2
@@ -33,10 +30,7 @@ def modify_urls(url):
         modified_ip = f"{ip_address[:-1]}{i}"
         modified_url = f"{base_url}{modified_ip}{port}{ip_end}"
         modified_urls.append(modified_url)
-
     return modified_urls
-
-
 def is_url_accessible(url):
     try:
         response = requests.get(url, timeout=0.5)
@@ -45,10 +39,7 @@ def is_url_accessible(url):
     except requests.exceptions.RequestException:
         pass
     return None
-
-
 results = []
-
 for url in urls:
     try:
         # 创建一个Chrome WebDriver实例
@@ -88,7 +79,6 @@ for url in urls:
             x_url = f"{base_url}{modified_ip}{port}"
             x_urls.append(x_url)
         urls = set(x_urls)  # 去重得到唯一的URL列表
-
         valid_urls = []
         #   多线程获取可用url
         with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
@@ -98,7 +88,6 @@ for url in urls:
                 modified_urls = modify_urls(url)
                 for modified_url in modified_urls:
                     futures.append(executor.submit(is_url_accessible, modified_url))
-
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 if result:
@@ -150,14 +139,14 @@ with open("my.txt", 'r', encoding='utf-8') as file:
                 #print(udpxy_url)
                 channel = f"{channel_name},{udpxy_url}/{channel_url}"
                 channels.append(channel)
-
-
 result_counter = 8  # 每个频道需要的个数
 with open("itvlist.txt", 'w', encoding='utf-8') as file:
     channel_counters = {}
+    file.write('广东(电信),#genre#\n')
     file.write('广东频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
+        if '广东' in channel_name or '广州' in channel_name:
             if channel_name in channel_counters:
                 if channel_counters[channel_name] >= result_counter:
                     continue
@@ -167,12 +156,88 @@ with open("itvlist.txt", 'w', encoding='utf-8') as file:
             else:
                 file.write(channel + "\n")
                 channel_counters[channel_name] = 1
-
-with open("itvlist.m3u", 'a', encoding='utf-8') as file:
-     channel_counters = {}
-    file.write('广东频道,#genre#\n')
+    channel_counters = {}
+    file.write('央视(电信),#genre#\n')
+    file.write('央视频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
+        if 'CCTV' in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(channel + "\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(channel + "\n")
+                channel_counters[channel_name] = 1
+    channel_counters = {}  
+    file.write('数字(电信),#genre#\n')
+    file.write('数字频道,#genre#\n')
+    for channel in channels:
+        channel_name, channel_url = channel.split(",")
+        if '天元' in channel_name or '风云' in channel_name or '球' in channel_name or '影' in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(f"{channel_name},{channel_url}\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(f"{channel_name},{channel_url}\n")
+                channel_counters[channel_name] = 1
+    channel_counters = {}
+    file.write('卫视(电信),#genre#\n')
+    file.write('卫视频道,#genre#\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if '卫视' in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(channel + "\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(channel + "\n")
+                channel_counters[channel_name] = 1
+    channel_counters = {}
+    file.write('其他(电信),#genre#\n')
+    file.write('其他频道,#genre#\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if 'CCTV' not in channel_name and '卫视' not in channel_name and '测试' not in channel_name and '广东' not in channel_name and '广州' not in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(channel + "\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(channel + "\n")
+                channel_counters[channel_name] = 1
+with open("itvlist.m3u", 'a', encoding='utf-8') as file:
+    channel_counters = {}
+    file.write('#EXTM3U\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if 'CCTV' in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"央视频道\",{channel_name}\n")
+                    file.write(f"{channel_url}\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"央视频道\",{channel_name}\n")
+                file.write(f"{channel_url}\n")
+                channel_counters[channel_name] = 1
+                channel_counters = {}
+    #file.write('#EXTM3U\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if '广东' in channel_name or '广州' in channel_name:
             if channel_name in channel_counters:
                 if channel_counters[channel_name] >= result_counter:
                     continue
@@ -184,6 +249,35 @@ with open("itvlist.m3u", 'a', encoding='utf-8') as file:
                 file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"广东频道\",{channel_name}\n")
                 file.write(f"{channel_url}\n")
                 channel_counters[channel_name] = 1
-
-                        
-                     
+    channel_counters = {}
+    #file.write('卫视频道,#genre#\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if '卫视' in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"卫视频道\",{channel_name}\n")
+                    file.write(f"{channel_url}\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"卫视频道\",{channel_name}\n")
+                file.write(f"{channel_url}\n")
+                channel_counters[channel_name] = 1
+    channel_counters = {}
+    #file.write('其他频道,#genre#\n')
+    for channel in channels:
+        channel_name,channel_url = channel.split(",")
+        if 'CCTV' not in channel_name and '卫视' not in channel_name and '测试' not in channel_name:
+            if channel_name in channel_counters:
+                if channel_counters[channel_name] >= result_counter:
+                    continue
+                else:
+                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"其他频道\",{channel_name}\n")
+                    file.write(f"{channel_url}\n")
+                    channel_counters[channel_name] += 1
+            else:
+                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"其他频道\",{channel_name}\n")
+                file.write(f"{channel_url}\n")
+                channel_counters[channel_name] = 1               
