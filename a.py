@@ -142,7 +142,6 @@ with open("my.txt", 'r', encoding='utf-8') as file:
 result_counter = 8  # 每个频道需要的个数
 with open("itvlist.txt", 'w', encoding='utf-8') as file:
     channel_counters = {}
-    file.write('广东(电信),#genre#\n')
     file.write('广东频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
@@ -157,7 +156,6 @@ with open("itvlist.txt", 'w', encoding='utf-8') as file:
                 file.write(channel + "\n")
                 channel_counters[channel_name] = 1
     channel_counters = {}
-    file.write('央视(电信),#genre#\n')
     file.write('央视频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
@@ -172,7 +170,6 @@ with open("itvlist.txt", 'w', encoding='utf-8') as file:
                 file.write(channel + "\n")
                 channel_counters[channel_name] = 1
     channel_counters = {}  
-    file.write('数字(电信),#genre#\n')
     file.write('数字频道,#genre#\n')
     for channel in channels:
         channel_name, channel_url = channel.split(",")
@@ -187,7 +184,6 @@ with open("itvlist.txt", 'w', encoding='utf-8') as file:
                 file.write(f"{channel_name},{channel_url}\n")
                 channel_counters[channel_name] = 1
     channel_counters = {}
-    file.write('卫视(电信),#genre#\n')
     file.write('卫视频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
@@ -202,7 +198,6 @@ with open("itvlist.txt", 'w', encoding='utf-8') as file:
                 file.write(channel + "\n")
                 channel_counters[channel_name] = 1
     channel_counters = {}
-    file.write('其他(电信),#genre#\n')
     file.write('其他频道,#genre#\n')
     for channel in channels:
         channel_name,channel_url = channel.split(",")
