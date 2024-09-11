@@ -1,4 +1,10 @@
+广东(电信),#genre#
+广东频道,#genre#
 央视(电信),#genre#
+央视频道,#genre#
 数字(电信),#genre#
+数字频道,#genre#
 卫视(电信),#genre#
+卫视频道,#genre#
 其他(电信),#genre#
+其他频道,#genre#
