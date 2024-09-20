@@ -1,3 +1,7 @@
+# 使用城市名作为默认文件名，格式为 CityName.ip
+ipfile="ip/${city}.ip"
+only_good_ip="ip/${city}.onlygood.ip"
+rm -f $only_good_ip
 ipfile="ip/liantong1.ip"
 # 遍历文件 A 中的每个 IP 地址
 while IFS= read -r ip; do
