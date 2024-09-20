@@ -1,3 +1,4 @@
+ipfile="ip/liantong1.ip"
 # 遍历文件 A 中的每个 IP 地址
 while IFS= read -r ip; do
     # 尝试连接 IP 地址和端口号，并将输出保存到变量中
