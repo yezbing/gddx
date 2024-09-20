@@ -2,42 +2,47 @@ import socket
 import struct
 import time
 
-# 设置组播地址范围和端口
-multicast_address = '183.30.200.0'  # 组播地址的起始地址
-port = 10250                     # 组播端口号
-multicast_range = 255             # 扫描的组播地址范围，例如224.0.0.0到224.0.0.255
+# 配置组播 IP 地址和端口
+MULTICAST_IP = '183.30.200.1 - 183.30.200.255'  # 组播地址可以在224.0.0.0 - 239.255.255.255范围内选择
+MULTICAST_PORT = 10250  # 任意可用的端口
+TTL = 1  # Time to Live, 限制组播消息的传播范围
 
-# 初始化socket，设置为UDP协议
+# 创建 UDP 套接字
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock.settimeout(1)  # 设置超时时间
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-# 绑定到指定端口
-sock.bind(('', port))
+# 设置套接字为允许发送组播
+ttl_bin = struct.pack('@I', TTL)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl_bin)
 
-# 开始扫描组播IP段
-for i in range(multicast_range):
-    # 计算当前组播地址
-    current_address = f"224.0.0.0.{i}"
-    print(f"Scanning {current_address}:{port}")
-    
-    # 加入组播组
-    mreq = struct.pack("4sl", socket.inet_aton(current_address), socket.INADDR_ANY)
-    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+# 绑定监听端口，用于接收返回的组播数据
+sock.bind(('', MULTICAST_PORT))
 
+# 订阅指定的组播地址
+mreq = struct.pack('4sl', socket.inet_aton(MULTICAST_IP), socket.INADDR_ANY)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+def send_multicast_probe():
+    """
+    发送组播探测报文
+    """
+    message = b"Multicast probe"
+    sock.sendto(message, (MULTICAST_IP, MULTICAST_PORT))
+    print(f"已发送组播探测报文到 {MULTICAST_IP}:{MULTICAST_PORT}")
+
+def receive_multicast_response():
+    """
+    接收组播响应
+    """
+    print("开始监听组播响应...")
+    sock.settimeout(10)  # 设置超时时间
     try:
-        # 监听返回的数据
-        data, addr = sock.recvfrom(1024)
-        print(f"Received data from {addr}: {data}")
+        while True:
+            data, addr = sock.recvfrom(1024)  # 接收响应
+            print(f"收到来自 {addr} 的数据: {data}")
     except socket.timeout:
-        # 如果超时没有数据，继续扫描
-        print(f"No data from {current_address}")
-    finally:
-        # 离开组播组
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_DROP_MEMBERSHIP, mreq)
+        print("监听超时，没有收到更多的组播数据。")
 
-    # 添加适当的等待时间，避免对网络造成过大压力
-    time.sleep(0.1)
-
-# 关闭socket
-sock.close()
+if __name__ == "__main__":
+    send_multicast_probe()  # 发送探测
+    time.sleep(1)  # 等待片刻
+    receive_multicast_response()  # 监听响应
