@@ -18,7 +18,7 @@ sock.bind(('', port))
 # 开始扫描组播IP段
 for i in range(multicast_range):
     # 计算当前组播地址
-    current_address = f"183.30.200.{i}"
+    current_address = f"224.0.0.0.{i}"
     print(f"Scanning {current_address}:{port}")
     
     # 加入组播组
