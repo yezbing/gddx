@@ -1,3 +1,4 @@
+city="liantong1"
 # 使用城市名作为默认文件名，格式为 CityName.ip
 ipfile="ip/liantong1.ip"
 only_good_ip="ip/liantong1.onlygood.ip"
@@ -50,11 +51,11 @@ ip3=$(awk 'NR==3{print $2}' result_fofa_${city}.txt)
 rm -f "speedtest_${city}_$time.log"
 
 # 用 3 个最快 ip 生成对应城市的 txt 文件
-program="template/template_${city}.txt"
+program="template/template_liantong1.txt"
 
 sed "s/ipipip/$ip1/g" "$program" > tmp1.txt
 sed "s/ipipip/$ip2/g" "$program" > tmp2.txt
 sed "s/ipipip/$ip3/g" "$program" > tmp3.txt
-cat tmp1.txt tmp2.txt tmp3.txt > "txt/fofa_${city}.txt"
+cat tmp1.txt tmp2.txt tmp3.txt > "txt/fofa_liantong1.txt"
 
 for a in result/*.txt; do echo "";echo "========================= $(basename "$a") ==================================="; cat $a; done
