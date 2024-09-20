@@ -1,283 +1,43 @@
+import socket
+import struct
 import time
-import os
-import concurrent.futures
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import requests
-import re
-import threading
-from queue import Queue
-import eventlet
-eventlet.monkey_patch()
-###urls城市根据自己所处的地理位置修改
-urls = [
-    "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgcG9ydD0iODg4OCI%3D",#广东8888
-    "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgcG9ydD0iNDAyMiI%3D",#深圳
-    "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgb3JnPSJDaGluYW5ldCI%3D",#广东
-    "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgcG9ydD0iMTAwMDAi",#中山
-    "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgY2l0eT0iU2hlbnpoZW4i"#湛江
-     "https://fofa.info/result?qbase64=InVkcHh5IiAmJiByZWdpb249Ikd1YW5nZG9uZyIgJiYgY2l0eT0iR3Vhbmd6aG91Ig%3D%3D"#广州
-]
-def modify_urls(url):
-    modified_urls = []
-    ip_start_index = url.find("//") + 2
-    ip_end_index = url.find(":", ip_start_index)
-    base_url = url[:ip_start_index]  # http:// or https://
-    ip_address = url[ip_start_index:ip_end_index]
-    port = url[ip_end_index:]
-    ip_end = "/status"
-    for i in range(1, 256):
-        modified_ip = f"{ip_address[:-1]}{i}"
-        modified_url = f"{base_url}{modified_ip}{port}{ip_end}"
-        modified_urls.append(modified_url)
-    return modified_urls
-def is_url_accessible(url):
+
+# 设置组播地址范围和端口
+multicast_address = '183.30.200.0'  # 组播地址的起始地址
+port = 10250                     # 组播端口号
+multicast_range = 255             # 扫描的组播地址范围，例如224.0.0.0到224.0.0.255
+
+# 初始化socket，设置为UDP协议
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+sock.settimeout(1)  # 设置超时时间
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+# 绑定到指定端口
+sock.bind(('', port))
+
+# 开始扫描组播IP段
+for i in range(multicast_range):
+    # 计算当前组播地址
+    current_address = f"224.0.0.{i}"
+    print(f"Scanning {current_address}:{port}")
+    
+    # 加入组播组
+    mreq = struct.pack("4sl", socket.inet_aton(current_address), socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
     try:
-        response = requests.get(url, timeout=0.5)
-        if response.status_code == 200:
-            return url
-    except requests.exceptions.RequestException:
-        pass
-    return None
-results = []
-for url in urls:
-    try:
-        # 创建一个Chrome WebDriver实例
-        chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-    
-        driver = webdriver.Chrome(options=chrome_options)
-        # 使用WebDriver访问网页
-        driver.get(url)  # 将网址替换为你要访问的网页地址
-        time.sleep(10)
-        # 获取网页内容
-        page_content = driver.page_source
-    
-        # 关闭WebDriver
-        driver.quit()
-    
-        # 查找所有符合指定格式的网址
-        pattern = r"http://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+"  # 设置匹配的格式，如http://8.8.8.8:8888
-        urls_all = re.findall(pattern, page_content)
-        # urls = list(set(urls_all))  # 去重得到唯一的URL列表
-        urls = set(urls_all)  # 去重得到唯一的URL列表
-        x_urls = []
-        for url in urls:  # 对urls进行处理，ip第四位修改为1，并去重
-            url = url.strip()
-            ip_start_index = url.find("//") + 2
-            ip_end_index = url.find(":", ip_start_index)
-            ip_dot_start = url.find(".") + 1
-            ip_dot_second = url.find(".", ip_dot_start) + 1
-            ip_dot_three = url.find(".", ip_dot_second) + 1
-            base_url = url[:ip_start_index]  # http:// or https://
-            ip_address = url[ip_start_index:ip_dot_three]
-            port = url[ip_end_index:]
-            ip_end = "1"
-            modified_ip = f"{ip_address}{ip_end}"
-            x_url = f"{base_url}{modified_ip}{port}"
-            x_urls.append(x_url)
-        urls = set(x_urls)  # 去重得到唯一的URL列表
-        valid_urls = []
-        #   多线程获取可用url
-        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-            futures = []
-            for url in urls:
-                url = url.strip()
-                modified_urls = modify_urls(url)
-                for modified_url in modified_urls:
-                    futures.append(executor.submit(is_url_accessible, modified_url))
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result:
-                    valid_urls.append(result)    
-        
-        for url in valid_urls:
-            print(f"可用url:{url}")
-            # 创建一个Chrome WebDriver实例
-            chrome_options = Options()
-            chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-        
-            driver = webdriver.Chrome(options=chrome_options)
-            # 使用WebDriver访问网页
-            driver.get(url)  # 将网址替换为你要访问的网页地址
-            time.sleep(10)
-            # 获取网页内容
-            page_content = driver.page_source
-        
-            # 关闭WebDriver
-            driver.quit()
-        
-            # 查找所有符合指定格式的网址
-            #if "<td>1</td>" or "<td>2</td>" or "<td>3</td>" or "<td>4</td>"  or "<td>5</td>" or "<td>6</td>" or "<td>7</td>" or "<td>8</td>" in page_content:
-            if "0.0" in page_content and "1024" not in page_content and "4000" not in page_content:
-                print(url)
-                udpxy_urls = []# 修改文件转发地址
-                ip_start_index = url.find("//") + 2
-                ip_dot_start = url.find(".") + 1
-                ip_index_second = url.find("/", ip_dot_start)
-                base_url = url[:ip_start_index]  # http:// or https://
-                ip_address = url[ip_start_index:ip_index_second]
-                url_x = f"{base_url}{ip_address}"
-                udpxy_url = f"{url_x}"
-                results.append(udpxy_url)
-                
-    except:
-        continue
-channels = []
-with open("my.txt", 'r', encoding='utf-8') as file:
-    lines = file.readlines()
-    for line in lines:
-        #print(line)
-        line = line.strip()
-        if line:
-            channel_name,channel_url = line.split(",")
-            for udpxy_url in results:
-                #print(udpxy_url)
-                channel = f"{channel_name},{udpxy_url}/{channel_url}"
-                channels.append(channel)
-result_counter = 8  # 每个频道需要的个数
-with open("itvlist.txt", 'w', encoding='utf-8') as file:
-    channel_counters = {}
-    file.write('广东(电信),#genre#\n')
-    file.write('广东频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if '广东' in channel_name or '广州' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(channel + "\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(channel + "\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}
-    file.write('央视(电信),#genre#\n')
-    file.write('央视频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if 'CCTV' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(channel + "\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(channel + "\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}  
-    file.write('数字(电信),#genre#\n')
-    file.write('数字频道,#genre#\n')
-    for channel in channels:
-        channel_name, channel_url = channel.split(",")
-        if '天元' in channel_name or '风云' in channel_name or '球' in channel_name or '影' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(f"{channel_name},{channel_url}\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(f"{channel_name},{channel_url}\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}
-    file.write('卫视(电信),#genre#\n')
-    file.write('卫视频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if '卫视' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(channel + "\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(channel + "\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}
-    file.write('其他(电信),#genre#\n')
-    file.write('其他频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if 'CCTV' not in channel_name and '卫视' not in channel_name and '测试' not in channel_name and '广东' not in channel_name and '广州' not in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(channel + "\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(channel + "\n")
-                channel_counters[channel_name] = 1
-with open("itvlist.m3u", 'a', encoding='utf-8') as file:
-    channel_counters = {}
-    file.write('#EXTM3U\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if 'CCTV' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"央视频道\",{channel_name}\n")
-                    file.write(f"{channel_url}\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"央视频道\",{channel_name}\n")
-                file.write(f"{channel_url}\n")
-                channel_counters[channel_name] = 1
-                channel_counters = {}
-    #file.write('#EXTM3U\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if '广东' in channel_name or '广州' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"广东频道\",{channel_name}\n")
-                    file.write(f"{channel_url}\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"广东频道\",{channel_name}\n")
-                file.write(f"{channel_url}\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}
-    #file.write('卫视频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if '卫视' in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"卫视频道\",{channel_name}\n")
-                    file.write(f"{channel_url}\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"卫视频道\",{channel_name}\n")
-                file.write(f"{channel_url}\n")
-                channel_counters[channel_name] = 1
-    channel_counters = {}
-    #file.write('其他频道,#genre#\n')
-    for channel in channels:
-        channel_name,channel_url = channel.split(",")
-        if 'CCTV' not in channel_name and '卫视' not in channel_name and '测试' not in channel_name:
-            if channel_name in channel_counters:
-                if channel_counters[channel_name] >= result_counter:
-                    continue
-                else:
-                    file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"其他频道\",{channel_name}\n")
-                    file.write(f"{channel_url}\n")
-                    channel_counters[channel_name] += 1
-            else:
-                file.write(f"#EXTINF:-1 tvg-logo=https://live.fanmingming.com/tv/{channel_name}.png, group-title=\"其他频道\",{channel_name}\n")
-                file.write(f"{channel_url}\n")
-                channel_counters[channel_name] = 1         
+        # 监听返回的数据
+        data, addr = sock.recvfrom(1024)
+        print(f"Received data from {addr}: {data}")
+    except socket.timeout:
+        # 如果超时没有数据，继续扫描
+        print(f"No data from {current_address}")
+    finally:
+        # 离开组播组
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_DROP_MEMBERSHIP, mreq)
+
+    # 添加适当的等待时间，避免对网络造成过大压力
+    time.sleep(0.1)
+
+# 关闭socket
+sock.close()
