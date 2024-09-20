@@ -19,6 +19,7 @@ if [ ! -f "$only_good_ip" ]; then
     exit 1
 fi
 
+
 lines=$(wc -l < "$only_good_ip")
 echo "【$only_good_ip】内 ip 共计 $lines 个"
 
