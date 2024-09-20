@@ -5,7 +5,7 @@ import time
 # 设置组播地址范围和端口
 multicast_address = '183.30.200.1'  # 组播地址的起始地址
 port = 10250                     # 组播端口号
-multicast_range = 255             # 扫描的组播地址范围，例如224.0.0.0到224.0.0.255
+multicast_range = 183.30.200.1到183.30.200.255            # 扫描的组播地址范围，例如224.0.0.0到224.0.0.255
 
 # 初始化socket，设置为UDP协议
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
