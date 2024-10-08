@@ -22,7 +22,7 @@ jobs:
       #working-directory: zubo/speedtest
       run: |
         cd $GITHUB_WORKSPACE/speedtest
-        bash ./tv.sh
+        bash ./dx.sh
     - name: Update Results
       run: |
         cd $GITHUB_WORKSPACE/speedtest
